@@ -179,21 +179,34 @@ The UI must solve a hard problem: communicating a complex, context-dependent sta
 
 **Design challenge:** This is a lot of information. The UI will need careful layering — critical info always visible, secondary info surfaced contextually, deep info available on demand. Playtesting will drive iteration here heavily.
 
-### 8. Animation System
+### 8. Animation & Visual Style
 
 The gameplay logic is discrete and hand-authored. The animation system's job is to **visually represent** these discrete states convincingly in 3D — it does not drive gameplay.
 
-**Approach: Procedural animation over authored skeletons (Cairn model)**
+**Art direction: Deliberate stylization**
+
+The art style is not just an aesthetic choice — it's an engineering strategy. Realistic rendering makes every IK imperfection uncanny valley. A deliberate stylized look makes "close enough" look intentional and gives the procedural animation system room to breathe.
+
+Stylization principles:
+- **Simplified shading** — flat/cel shading or a limited tonal palette. Hides mesh interpenetration and contact artifacts that would be glaring under realistic lighting. Two bodies in constant contact will occasionally clip — stylization makes this invisible rather than grotesque.
+- **Snappy motion language** — slightly exaggerated ease-in/ease-out on transitions, brief holds on key poses before and after techniques. This masks interpolation artifacts by making the motion feel *designed* rather than simulated. Quick transitions spend less time in the uncanny in-between states.
+- **Motion effects** — subtle trails, smear frames, or motion blur during fast transitions (sweeps, scrambles). These are cheap to render and cover the moments where procedural interpolation is weakest.
+- **Readable silhouettes** — stylized proportions (slightly larger hands/feet, broader shoulders) make positions more readable at a glance and are more forgiving of IK imprecision than anatomically correct proportions.
+- **Contact abstraction** — rather than trying to perfectly simulate every point of contact, use visual shorthand. A grip could be represented by a visual "lock" indicator rather than needing fingers to perfectly wrap around a wrist. A hook could glow or pulse rather than requiring the foot to sit perfectly in the hip crease.
+
+The visual target is closer to Guilty Gear / Hi-Fi Rush / Cairn than UFC. Expressive and readable, not photorealistic.
+
+**Approach: Procedural animation over authored skeletons**
 
 Rather than authoring unique animations for every technique (combinatorially explosive and brittle), use a hybrid system:
 
 - **Pose targets** — each position has a defined target pose for both players (skeletal poses representing correct body positioning for that grappling state). These are hand-authored to look correct.
-- **Procedural interpolation** — transitions between poses are driven procedurally. IK (inverse kinematics) handles limb placement. Physics-informed blending handles weight and momentum. The system interpolates between the "before" and "after" poses of a technique with procedurally generated in-betweens.
-- **Pressure visualization** — while the player applies pressure, subtle procedural animation shows the effect: opponent's posture breaking, weight shifting, limbs adjusting. This is cosmetic but critical for readability — the player needs to *see* that their pressure is working.
-- **Authored keyframes for signature moments** — certain high-impact techniques (submission locks, dramatic sweeps) may warrant hand-authored animation sequences or keyframe guides that the procedural system follows more closely. These are the "payoff" moments.
-- **Contact management** — a constraint system ensuring bodies stay in contact where they should (grips maintained, hooks in place, weight on chest). This is where physics-based jank typically emerges, so careful constraint tuning and authored contact point definitions per position are essential.
+- **Procedural interpolation** — transitions between poses are driven procedurally. IK (inverse kinematics) handles limb placement. Physics-informed blending handles weight and momentum. The system interpolates between the "before" and "after" poses of a technique with procedurally generated in-betweens. Stylized motion curves (snap-to-pose with ease-out) reduce the time spent in interpolation, which is where visual quality is lowest.
+- **Control variable visualization** — while the player applies inputs, procedural animation shows the effect on the characters: opponent's posture breaking, weight shifting, limbs adjusting, hooks being degraded. This is cosmetic but critical for readability — the player needs to *see* that their inputs are affecting control variables. Stylized VFX (directional indicators, tension lines, weight shift overlays) can supplement the body animation when the IK system can't fully express what's happening.
+- **Authored keyframes for signature moments** — certain high-impact techniques (submission locks, dramatic sweeps) may warrant hand-authored animation sequences or keyframe guides that the procedural system follows more closely. These are the "payoff" moments and worth the per-technique investment.
+- **Contact management** — a constraint system ensuring bodies stay in contact where they should (grips maintained, hooks in place, weight on chest). Stylized contact indicators (visual locks, glow effects) reduce the precision required from the constraint solver — if the player can *see* that a grip is active via UI/VFX, the hand doesn't need to be pixel-perfect on the wrist.
 
-**The key principle:** Gameplay state is *always* authoritative. The animation system visualizes it. If the animation system can't perfectly represent a transition, the gameplay still resolves correctly and the animation catches up. The visual can be slightly imperfect — the game logic cannot be.
+**The key principle:** Gameplay state is *always* authoritative. The animation system visualizes it. If the animation system can't perfectly represent a transition, the gameplay still resolves correctly and the animation catches up. Stylization is the tool that makes the gap between "perfect" and "actual" invisible to the player.
 
 ### 9. Camera System
 
@@ -222,6 +235,50 @@ Camera will need per-position hints to avoid bad angles (e.g., camera shouldn't 
 
 ---
 
+## Technical Architecture
+
+Custom engine, no third-party game engine. The rendering requirements are minimal (two characters on a mat), the core systems are all bespoke, and the animation system is specialized enough that existing engine animation paradigms would actively hinder development.
+
+### Framework Stack
+
+| Layer | Choice | Rationale |
+|---|---|---|
+| **Windowing / Input / Audio** | SDL2 (or SDL3) | Battle-tested, Linux-native, excellent gamepad support. Thin C API usable from any language. |
+| **GPU Abstraction** | wgpu, bgfx, or raw OpenGL/Vulkan | Only rendering skinned meshes + UI quads. A few thousand lines of rendering code, not tens of thousands. |
+| **Skeletal Animation / IK** | Custom | The requirements (two-body contact constraints, multi-chain IK, procedural interpolation) are specialized enough that general-purpose IK libraries likely won't suffice. This is the hardest technical subsystem and needs to be purpose-built. |
+| **Debug UI** | Dear ImGui | Control variable inspectors, position graph visualizer, probability readouts, AI state viewers. Essential for tuning. |
+| **Game UI** | Custom or lightweight retained-mode library | The HUD elements are known and bounded — can be purpose-built. |
+| **Data Serialization** | YAML or JSON | Position graphs, technique data, control variable definitions. Hand-authored content loaded at startup. |
+
+### Language
+
+**C++.** The entire game dev industry's accumulated knowledge — IK solvers, skeletal animation, skinned mesh rendering, GPU pipelines — exists primarily in C++. Reference implementations, GDC talks, and debugging resources all assume C++. SDL2 integration is native. For a custom engine project where the hardest problems are in animation and graphics, being able to directly use existing reference material without translation is a significant practical advantage.
+
+### Architecture Layers
+
+```
+┌─────────────────────────────────────────┐
+│              Presentation               │
+│  Rendering · Animation · UI · Audio     │
+├─────────────────────────────────────────┤
+│              Game Systems               │
+│  Position Graph · Control Variables     │
+│  Technique Resolution · Counter System  │
+│  Fatigue · AI Opponent                  │
+├─────────────────────────────────────────┤
+│              Engine Core                │
+│  Game Loop · Input · State Management   │
+│  Data Loading · Event System            │
+├─────────────────────────────────────────┤
+│              Platform Layer             │
+│  SDL2 · GPU API · Filesystem · Audio    │
+└─────────────────────────────────────────┘
+```
+
+The game systems layer is entirely decoupled from rendering. The position graph, control variable engine, technique resolution, and AI can all be developed, tested, and balanced **without any rendering at all** — driven by a text/debug UI or automated test harnesses. This is a critical architectural property: the hardest design problems (balance, feel, AI behavior) can be iterated on independently from the hardest technical problem (animation/rendering).
+
+---
+
 ## Open Questions & Future Work
 
 These are explicitly deferred from the core gameplay design but noted for future development.
@@ -232,5 +289,5 @@ These are explicitly deferred from the core gameplay design but noted for future
 - **Gi expansion** — adding gi-specific grips, positions, and techniques as a future content layer on top of the no-gi foundation. Deferred.
 - **Weight classes and body types** — how size/strength/flexibility differentials are modeled and balanced. Noted in attribute system but detailed design deferred.
 - **Technique discovery** — can the player discover technique chains or setups that weren't explicitly authored? Or is the system strictly bounded by authored content? Philosophical design question.
-- **Animation pipeline** — detailed technical approach for the procedural animation system. Needs prototyping. Deferred.
-- **Engine/platform selection** — no engine commitment yet. Deferred until core systems are prototyped.
+- **Animation pipeline** — detailed technical approach for the procedural animation / IK constraint system. The hardest technical subsystem. Needs dedicated prototyping. Deferred.
+- **Scripting layer** — whether to embed Lua or similar for position/technique data and AI behavior, or keep everything in C++ with data-driven YAML/JSON. A scripting layer would make content iteration faster but adds complexity. Decide after the core engine stabilizes.
