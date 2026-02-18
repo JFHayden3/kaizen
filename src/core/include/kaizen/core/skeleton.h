@@ -38,37 +38,43 @@ struct Pose {
 
 // Named bone indices for the humanoid skeleton
 namespace HumanBone {
-    constexpr BoneId SPINE_MID    = 0;
-    constexpr BoneId SPINE_UPPER  = 1;
-    constexpr BoneId PELVIS       = 2;
-    constexpr BoneId NECK         = 3;
-    constexpr BoneId HEAD         = 4;
+    constexpr BoneId WORLD_ROOT   = 0;
+    constexpr BoneId SPINE_MID    = 1;
+    constexpr BoneId SPINE_UPPER  = 2;
+    constexpr BoneId PELVIS       = 3;
+    constexpr BoneId NECK         = 4;
+    constexpr BoneId HEAD         = 5;
     // Head contact points (children of HEAD, rigid on skull)
-    constexpr BoneId HEAD_TOP     = 5;
-    constexpr BoneId FOREHEAD     = 6;
-    constexpr BoneId CHIN         = 7;
-    constexpr BoneId JAW_L        = 8;
-    constexpr BoneId JAW_R        = 9;
-    constexpr BoneId HEAD_SIDE_L  = 10;
-    constexpr BoneId HEAD_SIDE_R  = 11;
-    constexpr BoneId HEAD_BACK    = 12;
+    constexpr BoneId HEAD_TOP     = 6;
+    constexpr BoneId FOREHEAD     = 7;
+    constexpr BoneId CHIN         = 8;
+    constexpr BoneId JAW_L        = 9;
+    constexpr BoneId JAW_R        = 10;
+    constexpr BoneId HEAD_SIDE_L  = 11;
+    constexpr BoneId HEAD_SIDE_R  = 12;
+    constexpr BoneId HEAD_BACK    = 13;
     // Arms
-    constexpr BoneId CLAVICLE_L   = 13;
-    constexpr BoneId UPPER_ARM_L  = 14;
-    constexpr BoneId FOREARM_L    = 15;
-    constexpr BoneId HAND_L       = 16;
-    constexpr BoneId CLAVICLE_R   = 17;
-    constexpr BoneId UPPER_ARM_R  = 18;
-    constexpr BoneId FOREARM_R    = 19;
-    constexpr BoneId HAND_R       = 20;
+    constexpr BoneId CLAVICLE_L   = 14;
+    constexpr BoneId UPPER_ARM_L  = 15;
+    constexpr BoneId FOREARM_L    = 16;
+    constexpr BoneId HAND_L       = 17;
+    constexpr BoneId CLAVICLE_R   = 18;
+    constexpr BoneId UPPER_ARM_R  = 19;
+    constexpr BoneId FOREARM_R    = 20;
+    constexpr BoneId HAND_R       = 21;
     // Legs
-    constexpr BoneId UPPER_LEG_L  = 21;
-    constexpr BoneId LOWER_LEG_L  = 22;
-    constexpr BoneId FOOT_L       = 23;
-    constexpr BoneId UPPER_LEG_R  = 24;
-    constexpr BoneId LOWER_LEG_R  = 25;
-    constexpr BoneId FOOT_R       = 26;
-    constexpr BoneId COUNT        = 27;
+    constexpr BoneId UPPER_LEG_L  = 22;
+    constexpr BoneId LOWER_LEG_L  = 23;
+    constexpr BoneId FOOT_L       = 24;
+    constexpr BoneId UPPER_LEG_R  = 25;
+    constexpr BoneId LOWER_LEG_R  = 26;
+    constexpr BoneId FOOT_R       = 27;
+    // Hands and feet (children of terminal limb bones)
+    constexpr BoneId FINGERS_L    = 28;
+    constexpr BoneId FINGERS_R    = 29;
+    constexpr BoneId TOES_L       = 30;
+    constexpr BoneId TOES_R       = 31;
+    constexpr BoneId COUNT        = 32;
 
     // First/last head contact bone for iteration
     constexpr BoneId HEAD_CONTACT_FIRST = HEAD_TOP;

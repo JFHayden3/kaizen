@@ -1,6 +1,7 @@
 #include "kaizen/platform/window.h"
 #include "kaizen/core/skeleton.h"
 #include "kaizen/core/ik.h"
+#include "kaizen/core/jacobian_ik.h"
 #include "kaizen/render/debug_draw.h"
 #include "kaizen/render/camera.h"
 #include "kaizen/render/skeleton_renderer.h"
@@ -31,10 +32,10 @@ static void apply_idle_anim(const kaizen::Skeleton& skel,
     namespace HB = kaizen::HumanBone;
     float p = t + phase_offset;
 
-    // Subtle weight shift — sway root side to side
-    pose.transforms[HB::SPINE_MID].translation.x +=
+    // Subtle weight shift — sway body side to side
+    pose.transforms[HB::WORLD_ROOT].translation.x +=
         std::sin(p * 0.8f) * 0.02f;
-    pose.transforms[HB::SPINE_MID].translation.y +=
+    pose.transforms[HB::WORLD_ROOT].translation.y +=
         std::sin(p * 1.6f) * 0.005f; // breathing bob
 
     // Spine sway
@@ -234,6 +235,13 @@ int main(int /*argc*/, char* /*argv*/[]) {
     BoneDragState drag_state;
     std::vector<kaizen::Mat4> last_world;
 
+    // Solver mode: 0 = FABRIK, 1 = Jacobian
+    int solver_mode = 0;
+    kaizen::JacobianIKConfig jacobian_config;
+    kaizen::Pose persistent_pose = kaizen::Pose::from_rest(skeleton);
+    bool jacobian_pose_initialized = false;
+    kaizen::u32 last_jacobian_iters = 0;
+
     SDL_Cursor* cursor_arrow = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
     SDL_Cursor* cursor_hand = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
 
@@ -368,11 +376,33 @@ int main(int /*argc*/, char* /*argv*/[]) {
                 targets_initialized = true;
             }
 
-            int max_iter = static_cast<int>(ik_config.max_iterations);
-            ImGui::SliderInt("Max iterations", &max_iter, 1, 30);
-            ik_config.max_iterations = static_cast<kaizen::u32>(max_iter);
-            ImGui::SliderFloat("Tolerance", &ik_config.tolerance, 0.0001f, 0.01f, "%.4f");
-            ImGui::SliderFloat("Root mobility", &ik_config.root_mobility, 0.0f, 1.0f);
+            const char* solver_names[] = {"FABRIK", "Jacobian"};
+            ImGui::Combo("Solver", &solver_mode, solver_names, 2);
+
+            if (solver_mode == 0) {
+                // FABRIK controls
+                int max_iter = static_cast<int>(ik_config.max_iterations);
+                ImGui::SliderInt("Max iterations", &max_iter, 1, 30);
+                ik_config.max_iterations = static_cast<kaizen::u32>(max_iter);
+                ImGui::SliderFloat("Tolerance", &ik_config.tolerance, 0.0001f, 0.01f, "%.4f");
+                ImGui::SliderFloat("Root mobility", &ik_config.root_mobility, 0.0f, 1.0f);
+            } else {
+                // Jacobian controls
+                int max_iter = static_cast<int>(jacobian_config.max_iterations);
+                ImGui::SliderInt("Max iterations", &max_iter, 1, 60);
+                jacobian_config.max_iterations = static_cast<kaizen::u32>(max_iter);
+                ImGui::SliderFloat("Tolerance", &jacobian_config.tolerance, 0.0001f, 0.01f, "%.4f");
+                ImGui::SliderFloat("Damping", &jacobian_config.damping, 0.01f, 2.0f);
+                ImGui::SliderFloat("Max step", &jacobian_config.max_step, 0.01f, 0.5f);
+                ImGui::Checkbox("Root translates", &jacobian_config.root_translates);
+
+                ImGui::Text("Last iterations: %u", last_jacobian_iters);
+
+                if (ImGui::Button("Reset Pose")) {
+                    persistent_pose = kaizen::Pose::from_rest(skeleton);
+                    jacobian_pose_initialized = false;
+                }
+            }
 
             ImGui::PushItemWidth(250.0f);
             for (size_t i = 0; i < NUM_TARGETABLE; ++i) {
@@ -407,12 +437,26 @@ int main(int /*argc*/, char* /*argv*/[]) {
         kaizen::SkeletonRenderer::draw_ground_grid(debug_draw);
 
         if (ik_mode) {
-            // Single character at center with IK
-            auto pose = kaizen::Pose::from_rest(skeleton);
-            auto world = kaizen::compute_world_transforms(skeleton, pose);
+            std::vector<kaizen::Mat4> world;
 
-            kaizen::ik_solve(skeleton, ik_setup, ik_targets, pose, world, ik_config);
-            world = kaizen::compute_world_transforms(skeleton, pose);
+            if (solver_mode == 0) {
+                // FABRIK: rebuild from rest each frame
+                auto pose = kaizen::Pose::from_rest(skeleton);
+                world = kaizen::compute_world_transforms(skeleton, pose);
+                kaizen::ik_solve(skeleton, ik_setup, ik_targets, pose, world, ik_config);
+                world = kaizen::compute_world_transforms(skeleton, pose);
+            } else {
+                // Jacobian: use persistent pose across frames
+                if (!jacobian_pose_initialized) {
+                    persistent_pose = kaizen::Pose::from_rest(skeleton);
+                    jacobian_pose_initialized = true;
+                }
+                world = kaizen::compute_world_transforms(skeleton, persistent_pose);
+                last_jacobian_iters = kaizen::jacobian_ik_solve(
+                    skeleton, ik_setup, ik_targets, persistent_pose, world, jacobian_config);
+                world = kaizen::compute_world_transforms(skeleton, persistent_pose);
+            }
+
             last_world = world;
 
             // While dragging, non-dragged targets follow solved positions so they
@@ -437,12 +481,12 @@ int main(int /*argc*/, char* /*argv*/[]) {
         } else {
             // Two characters with optional idle animation
             auto pose1 = kaizen::Pose::from_rest(skeleton);
-            pose1.transforms[kaizen::HumanBone::SPINE_MID].translation = kaizen::Vec3{-0.8f, 1.10f, 0.0f};
-            pose1.transforms[kaizen::HumanBone::SPINE_MID].rotation = p1_root_rot;
+            pose1.transforms[kaizen::HumanBone::WORLD_ROOT].translation = kaizen::Vec3{-0.8f, 1.10f, 0.0f};
+            pose1.transforms[kaizen::HumanBone::WORLD_ROOT].rotation = p1_root_rot;
 
             auto pose2 = kaizen::Pose::from_rest(skeleton);
-            pose2.transforms[kaizen::HumanBone::SPINE_MID].translation = kaizen::Vec3{0.8f, 1.10f, 0.0f};
-            pose2.transforms[kaizen::HumanBone::SPINE_MID].rotation = p2_root_rot;
+            pose2.transforms[kaizen::HumanBone::WORLD_ROOT].translation = kaizen::Vec3{0.8f, 1.10f, 0.0f};
+            pose2.transforms[kaizen::HumanBone::WORLD_ROOT].rotation = p2_root_rot;
 
             if (animate) {
                 float t = static_cast<float>(SDL_GetTicks()) / 1000.0f;

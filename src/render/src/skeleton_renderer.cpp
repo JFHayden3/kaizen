@@ -15,6 +15,7 @@ static Vec3 bone_color(BoneId id) {
     namespace HB = HumanBone;
     switch (id) {
         // Spine
+        case HB::WORLD_ROOT:   return {0.85f, 0.85f, 0.85f};
         case HB::SPINE_MID:    return {0.85f, 0.85f, 0.85f};
         case HB::SPINE_UPPER:  return {1.0f,  1.0f,  1.0f};
         case HB::PELVIS:       return {0.65f, 0.65f, 0.65f};
@@ -39,6 +40,12 @@ static Vec3 bone_color(BoneId id) {
         case HB::UPPER_LEG_R:  return {0.6f,  0.15f, 0.4f};
         case HB::LOWER_LEG_R:  return {0.8f,  0.3f,  0.6f};
         case HB::FOOT_R:       return {1.0f,  0.5f,  0.8f};
+        // Hands (fingertip end of limb)
+        case HB::FINGERS_L:    return {0.7f,  1.0f,  0.6f};
+        case HB::FINGERS_R:    return {0.6f,  0.8f,  1.0f};
+        // Feet (toe end of limb)
+        case HB::TOES_L:       return {1.0f,  0.95f, 0.4f};
+        case HB::TOES_R:       return {1.0f,  0.6f,  0.85f};
         default:               return {0.7f,  0.7f,  0.7f};
     }
 }

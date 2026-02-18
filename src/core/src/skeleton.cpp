@@ -23,8 +23,11 @@ Skeleton build_humanoid_skeleton() {
     // Proportions for ~1.75m character
     // Y is up, character faces -Z in rest pose
 
-    // Root — SPINE_MID is the hub; arms chain up through SPINE_UPPER, legs chain down through PELVIS
-    b[HumanBone::SPINE_MID]   = {"spine_mid",   INVALID_BONE,          {0.0f, 1.10f, 0.0f}};
+    // WORLD_ROOT: unconstrained whole-body position and orientation
+    b[HumanBone::WORLD_ROOT]  = {"world_root",  INVALID_BONE,          {0.0f, 1.10f, 0.0f}};
+
+    // Spine — SPINE_MID is the hub; arms chain up through SPINE_UPPER, legs chain down through PELVIS
+    b[HumanBone::SPINE_MID]   = {"spine_mid",   HumanBone::WORLD_ROOT, {0.0f, 0.0f, 0.0f}};
     b[HumanBone::SPINE_UPPER] = {"spine_upper",  HumanBone::SPINE_MID,  {0.0f, 0.20f, 0.0f}};
     b[HumanBone::PELVIS]      = {"pelvis",       HumanBone::SPINE_MID,  {0.0f, -0.15f, 0.0f}};
 
@@ -63,6 +66,12 @@ Skeleton build_humanoid_skeleton() {
     b[HumanBone::UPPER_LEG_R] = {"upper_leg_r", HumanBone::PELVIS,      {-0.10f, -0.05f, 0.0f}};
     b[HumanBone::LOWER_LEG_R] = {"lower_leg_r", HumanBone::UPPER_LEG_R, {0.0f, -0.45f, 0.0f}};
     b[HumanBone::FOOT_R]      = {"foot_r",      HumanBone::LOWER_LEG_R, {0.0f, -0.45f, 0.0f}};
+
+    // Hands (extend from wrist) and feet (extend from ankle)
+    b[HumanBone::FINGERS_L]   = {"fingers_l",   HumanBone::HAND_L,      {0.10f, 0.0f, 0.0f}};
+    b[HumanBone::FINGERS_R]   = {"fingers_r",   HumanBone::HAND_R,      {-0.10f, 0.0f, 0.0f}};
+    b[HumanBone::TOES_L]      = {"toes_l",      HumanBone::FOOT_L,      {0.0f, 0.0f, -0.18f}};
+    b[HumanBone::TOES_R]      = {"toes_r",      HumanBone::FOOT_R,      {0.0f, 0.0f, -0.18f}};
 
     return skel;
 }

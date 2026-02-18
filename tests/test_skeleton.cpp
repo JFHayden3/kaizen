@@ -16,7 +16,7 @@ static Vec3 position_from_mat4(const Mat4& m) {
 TEST_CASE("Humanoid skeleton has 27 bones", "[skeleton]") {
     auto skel = build_humanoid_skeleton();
     REQUIRE(skel.bone_count() == HumanBone::COUNT);
-    REQUIRE(skel.bone_count() == 27);
+    REQUIRE(skel.bone_count() == 32);
 }
 
 TEST_CASE("Bones are in topological order", "[skeleton]") {
@@ -131,10 +131,10 @@ TEST_CASE("Two poses with different root translations produce offset transforms"
     auto skel = build_humanoid_skeleton();
 
     auto pose1 = Pose::from_rest(skel);
-    pose1.transforms[HumanBone::SPINE_MID].translation = Vec3{-1.0f, 1.10f, 0.0f};
+    pose1.transforms[HumanBone::WORLD_ROOT].translation = Vec3{-1.0f, 1.10f, 0.0f};
 
     auto pose2 = Pose::from_rest(skel);
-    pose2.transforms[HumanBone::SPINE_MID].translation = Vec3{1.0f, 1.10f, 0.0f};
+    pose2.transforms[HumanBone::WORLD_ROOT].translation = Vec3{1.0f, 1.10f, 0.0f};
 
     auto world1 = compute_world_transforms(skel, pose1);
     auto world2 = compute_world_transforms(skel, pose2);
