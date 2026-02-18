@@ -289,5 +289,5 @@ These are explicitly deferred from the core gameplay design but noted for future
 - **Gi expansion** — adding gi-specific grips, positions, and techniques as a future content layer on top of the no-gi foundation. Deferred.
 - **Weight classes and body types** — how size/strength/flexibility differentials are modeled and balanced. Noted in attribute system but detailed design deferred.
 - **Technique discovery** — can the player discover technique chains or setups that weren't explicitly authored? Or is the system strictly bounded by authored content? Philosophical design question.
-- **Animation pipeline** — detailed technical approach for the procedural animation / IK constraint system. The hardest technical subsystem. Needs dedicated prototyping. Deferred.
+- **Animation pipeline** — detailed technical approach for the procedural animation / IK constraint system. The hardest technical subsystem. See `docs/animation-system.md` for the current design.
 - **Scripting layer** — whether to embed Lua or similar for position/technique data and AI behavior, or keep everything in C++ with data-driven YAML/JSON. A scripting layer would make content iteration faster but adds complexity. Decide after the core engine stabilizes.

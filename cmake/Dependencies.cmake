@@ -47,6 +47,15 @@ target_include_directories(imgui PUBLIC
 )
 target_link_libraries(imgui PUBLIC SDL2::SDL2-static)
 
+# GLM (header-only math)
+FetchContent_Declare(
+    glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG 1.0.1
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(glm)
+
 # Catch2
 if(KAIZEN_BUILD_TESTS)
     FetchContent_Declare(

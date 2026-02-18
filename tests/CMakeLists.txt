@@ -1,5 +1,7 @@
 add_executable(kaizen_tests
     test_placeholder.cpp
+    test_skeleton.cpp
+    test_ik.cpp
 )
 target_link_libraries(kaizen_tests PRIVATE
     kaizen_game
