@@ -3,6 +3,7 @@ add_executable(kaizen_tests
     test_skeleton.cpp
     test_ik.cpp
     test_jacobian_ik.cpp
+    test_two_body_ik.cpp
 )
 target_link_libraries(kaizen_tests PRIVATE
     kaizen_game
